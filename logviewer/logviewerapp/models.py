@@ -1,6 +1,11 @@
+from email.policy import default
 import uuid
+from django.forms import JSONField
 from djongo import models
 from django.utils.translation import gettext_lazy as _
+from numpy import require
+
+from .fields import MyJSONField
 
 # Create your models here.
 class Log(models.Model):
@@ -32,3 +37,5 @@ class Log(models.Model):
     )
     title = models.CharField(max_length=100)
     description = models.TextField()
+    error = MyJSONField("error", default={}, blank=True)
+    details = MyJSONField("details", default={}, blank=True)
