@@ -24,7 +24,7 @@ class Log(models.Model):
 
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     service_name = models.CharField(max_length=100)
-    timestamp = models.TimeField()
+    timestamp = models.DateTimeField()
     severity = models.CharField(
         max_length=1,
         choices=Severity.choices,
