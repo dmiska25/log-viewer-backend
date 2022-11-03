@@ -17,6 +17,6 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path('api/', include('logviewerapp.urls')),
+    path('', include('logviewerapp.urls')),
     path('admin/', admin.site.urls),
 ]
