@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.template.response import TemplateResponse
 
 from .serializers import LogSerializer
 
@@ -24,5 +25,9 @@ class LogViewSet(viewsets.ModelViewSet):
 
 
 def LogViewerHomePage(request):
-    return render(request, 'homepage.html')
-    
+    logs = Log.objects.all().order_by('-timestamp')
+    args = {}
+    args['logs'] = logs
+    return TemplateResponse(request, "listing.html", args)
+
+def LogVewerRequest(request):

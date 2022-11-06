@@ -15,12 +15,21 @@ class Log(models.Model):
         HIGH = 'H', _('High')
         CRITICAL = 'C', _('Critical')
 
+    @property
+    def severity_label(self):
+        return self.Severity._value2member_map_[self.severity].label
+
+
     class Type(models.TextChoices):
         INFO = 'I', _('Info')
         ERROR = 'E', _('Error')
         WARNING = 'W', _('Warning')
         SUCCESS = 'S', _('Success')
         RECOMMENDATION = 'R', _('Recommendation')
+
+    @property
+    def type_label(self):
+        return self.Type._value2member_map_[self.type].label
 
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     service_name = models.CharField(max_length=100)
