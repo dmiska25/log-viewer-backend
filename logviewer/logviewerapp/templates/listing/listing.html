@@ -1,0 +1,17 @@
+<div class="table-responsive table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">Service Name</th>
+                <th scope="col">Severity</th>
+                <th scope="col">Type</th>
+                <th scope="col">Timestamp</th>
+                <th scope="col">Log Title</th>
+            </tr>
+        </thead>
+        <tbody id="listing-results">
+            {% include 'listing/listing_results.html' %}
+        </tbody>
+    </table>
+    {% include 'listing/button.html' %}
+</div>

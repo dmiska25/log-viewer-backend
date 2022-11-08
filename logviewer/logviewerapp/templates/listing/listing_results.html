@@ -1,0 +1,12 @@
+{% for log in logs %}
+<tr>
+    <th>{{ log.service_name }}</th>
+    <th>{{ log.severity_label }}</th>
+    <th>{{ log.type_label }}</th>
+    <th>{{ log.timestamp }}</th>
+    <th>{{ log.title }}</th>
+</tr>
+{% endfor %}
+{% if page > 1 %}
+    {% include 'listing/button.html' %}
+{% endif %}

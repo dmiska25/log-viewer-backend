@@ -1,0 +1,12 @@
+<div id="load-more-button" hx-swap-oob="outerHTML">
+    {% if logs.has_next %}
+        <button
+            class="u1 button primary"
+            hx-get="{{ load_more_link }}"
+            hx-target="#listing-results"
+            hx-swap="beforeend"
+        >
+            Load More
+        </button>
+    {% endif %}
+</div>
