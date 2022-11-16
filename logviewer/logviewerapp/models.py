@@ -1,4 +1,5 @@
 from email.policy import default
+import json
 import uuid
 from django.forms import JSONField
 from djongo import models
@@ -32,6 +33,9 @@ class Log(models.Model):
         return self.Type._value2member_map_[self.type].label
 
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    @property
+    def id(self):
+        return self._id
     service_name = models.CharField(max_length=100)
     timestamp = models.DateTimeField()
     severity = models.CharField(
@@ -47,4 +51,10 @@ class Log(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
     error = MyJSONField("error", default={}, blank=True)
+    @property
+    def error_string(self):
+        return json.dumps(self.error)
     details = MyJSONField("details", default={}, blank=True)
+    @property
+    def details_string(self):
+        return json.dumps(self.details)

@@ -17,6 +17,42 @@ body {
     overflow-y: scroll;
 }
 
+.listing {
+    display: flex;
+    flex-direction: column;
+}
+
+/* BEGIN sidepanel menu */
+
+.sidepanel {
+    height: 70%; /* Specify a height */
+    width: 0; /* 0 width - change this with JavaScript */
+    position: absolute; /* Stay in place */
+    margin-top: 5%;
+    z-index: 1; /* Stay on top */
+    background-color: rgb(0, 135, 153);
+    overflow-x: hidden; /* Disable horizontal scroll */
+    transition: 0.5s; /* 0.5 second transition effect to slide in the sidepanel */
+    align-self: flex-end;
+}
+
+.sidepanel .closebtn {
+    margin: 1%;
+}
+
+.sidepanel h3 {
+    text-align: center;
+}
+  
+/* The sidepanel links */
+.sidepanel p {
+    padding: 4px 4px 4px 4px;
+    font-size: 18px;
+    color: #00000061;
+}
+
+/* END SIDEPANEL */
+
 
 #sidebar {
     min-width: 250px;

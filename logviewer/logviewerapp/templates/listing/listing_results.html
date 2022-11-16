@@ -1,5 +1,5 @@
 {% for log in logs %}
-<tr>
+<tr onClick="loadDetails('{{ log.id }}')">
     <th>{{ log.service_name }}</th>
     <th>{{ log.severity_label }}</th>
     <th>{{ log.type_label }}</th>

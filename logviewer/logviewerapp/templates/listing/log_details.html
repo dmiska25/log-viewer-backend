@@ -1,0 +1,16 @@
+<div>
+    <h3>Details</h3>
+    <p><b>ID:</b> {{log.id}}</p>
+    <p><b>Title: </b> {{log.title}}</p>
+    <p><b>Service Name:</b> {{log.service_name}}</p>
+    <p><b>Severity Level:</b> {{log.severity_label}}</p>
+    <p><b>Type:</b> {{log.type_label}}</p>
+    <p><b>Timestamp:</b> {{log.timestamp}}</p>
+    <p><b>Description:</b> {{log.description}}</p>
+    {% if log.error_string != '{}' and log.error_string != '' %}
+    <p><b>Error Json:</b> {{log.error_string}}</p>
+    {% endif %}
+    {% if log.details_string != '{}' and log.details_string != '' %}
+    <p><b>Details Json:</b> {{log.details_string}}</p>
+    {% endif %}
+</div>

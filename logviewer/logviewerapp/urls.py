@@ -13,5 +13,6 @@ urlpatterns = [
     path('api/auth', include('rest_framework.urls', namespace='rest_framework')),
 
     path('log-viewer/', RedirectView.as_view(url='log-viewer/listing', permanent=True)),
-    path('log-viewer/listing/', views.listing)
+    path('log-viewer/listing/', views.listing),
+    path('log-viewer/listing/<str:id>', views.details),
 ]

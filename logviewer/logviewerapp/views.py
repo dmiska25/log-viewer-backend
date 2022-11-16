@@ -46,4 +46,12 @@ def listing(request):
         return TemplateResponse(request, "listing/listing.html", args)
     return TemplateResponse(request, "homepage.html", args)
 
+def details(request, id):
+    log = Log.objects.get(_id = id)
+    
+    args = {}
+    args['log'] = log
+
+    return TemplateResponse(request, "listing/log_details.html", args)
+
 
