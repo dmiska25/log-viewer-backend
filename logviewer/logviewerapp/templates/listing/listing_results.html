@@ -7,6 +7,6 @@
     <th>{{ log.title }}</th>
 </tr>
 {% endfor %}
-{% if page > 1 %}
+{% if page > 1 or search != None %}
     {% include 'listing/button.html' %}
 {% endif %}

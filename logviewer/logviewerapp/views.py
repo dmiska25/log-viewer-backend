@@ -29,19 +29,28 @@ class LogViewSet(viewsets.ModelViewSet):
 
 def listing(request):
     time_before = datetime.fromisoformat(request.GET.get('time_before', datetime.now().isoformat()))
+    search = request.GET.get('search', None)
     page = int(request.GET.get('page', 1))
+
+
     logs = Log.objects.all().order_by('-timestamp').filter(timestamp__lt=time_before)
+    if search != None:
+        logs = logs.filter(title__contains=search)
     paginator = Paginator(logs, PAGINATION_LIMIT)
     page_response = paginator.get_page(page)
+
+        
+
     
     args = {}
     args['component'] = "listing"
     args['logs'] = page_response
-    args['load_more_link'] = f"?time_before={time_before.isoformat()}&page={page+1}"
+    args['load_more_link'] = f"?time_before={time_before.isoformat()}&page={page+1}&search={search or ''}"
     args['page'] = page
+    args['search'] = search
     
     if request.htmx:
-        if page > 1:
+        if page > 1 or search != None:
             return TemplateResponse(request, "listing/listing_results.html", args)
         return TemplateResponse(request, "listing/listing.html", args)
     return TemplateResponse(request, "homepage.html", args)

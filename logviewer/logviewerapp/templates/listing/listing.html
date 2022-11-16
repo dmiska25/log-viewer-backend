@@ -1,4 +1,19 @@
 <div class="listing">
+    <div class="form-outline">
+        <input 
+            type="search"
+            name="search"
+            id="form1" 
+            class="form-control" 
+            placeholder="Search Title" 
+            aria-label="Search" 
+            hx-trigger="keyup changed delay:500ms, search"
+            hx-include="[name='search']"
+            hx-get=""
+            hx-target="#listing-results"
+            hx-swap="innerHtml"
+        />
+    </div>
     <div class="table-responsive table-wrapper">
         <table class="table">
             <thead>
