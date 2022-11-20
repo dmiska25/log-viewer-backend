@@ -98,6 +98,4 @@ session = requests.Session()
 session.auth = ("dmiska", "Whiskers04")
 
 response = session.post(url=URL, json=logs)
-print(response.json())
-
 session.close()

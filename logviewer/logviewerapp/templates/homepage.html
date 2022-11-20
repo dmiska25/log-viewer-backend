@@ -16,6 +16,11 @@
     
     {% load static %}
     <link rel="stylesheet" href="{% static 'homepage.css' %}">
+    
+    {% comment %} Fusion Charts {% endcomment %}
+    <script type="text/javascript" src="{% static "fusioncharts/fusioncharts.js" %}"></script>
+    <script type="text/javascript" src="{% static "fusioncharts/fusioncharts.charts.js" %}"></script>
+    <script type="text/javascript" src="{% static "fusioncharts/themes/fusioncharts.theme.fusion.js" %}"></script>
 </head>
 <body>
     <h1 class="jumbotron text-center">Log Viewer</h1>
