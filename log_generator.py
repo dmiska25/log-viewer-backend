@@ -61,15 +61,17 @@ class BaseLog:
         return BaseLog(**BaseLog.getDefaultArgs())
 
 class ErrorLog(BaseLog):
-    def __init__(self, traceback, **kwargs) -> None:
+    def __init__(self, error, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.traceback = traceback
+        self.error = error
 
     def getDefaultArgs():
-        return {
-            'traceback': "Example",
+        default_args = {
+            "error": {"traceback": "Examples"},
             **BaseLog.getDefaultArgs()
         }
+        default_args.update({'type': 'E'})
+        return default_args
 
     def generate():
         return ErrorLog(**ErrorLog.getDefaultArgs())
@@ -78,8 +80,8 @@ class ErrorLog(BaseLog):
 
 # define generation and quantities
 generation = {
-    BaseLog: 20,
-    #ErrorLog: 10
+    BaseLog: 1000,
+    ErrorLog: 600
 }
 
 
@@ -89,7 +91,6 @@ logs = []
 for logType in generation:
     for _ in range(generation[logType]):
         logs.append(logType.generate().__dict__)
-
 
 # send requests
 URL = "http://127.0.0.1:8000/api/logs/"
