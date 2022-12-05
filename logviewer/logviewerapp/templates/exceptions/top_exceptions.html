@@ -1,0 +1,13 @@
+<div class=top-exceptions id=top-exceptions>
+    <div id="top-exceptions-wrapper">{{ top_exceptions|safe }}</div>
+    <div>
+        {% for field in fields %}
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="top-exceptions?field={{ field }}"
+            hx-target="#top-exceptions"
+        >{{ field }}</button>
+        {% endfor %}
+    </div>
+</div>

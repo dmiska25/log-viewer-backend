@@ -1,5 +1,6 @@
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import zip_longest
 import pprint
 
 from django.core.paginator import Paginator
@@ -9,6 +10,7 @@ from django.shortcuts import render
 from django.template.response import TemplateResponse
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
+from django.core.exceptions import SuspiciousOperation
 
 from .rawQuery import aggregate
 
@@ -18,6 +20,11 @@ from .models import Log
 from .serializers import LogSerializer
 
 PAGINATION_LIMIT = 30
+QUERY_FIELDS = [
+    "service_name",
+    "severity",
+    "title",
+]
 
 # Create your views here.
 class LogViewSet(viewsets.ModelViewSet):
@@ -59,72 +66,194 @@ def listing(request):
 def details(request, id):
 
     if not request.htmx:
-        return HttpResponseNotFound()
+        raise SuspiciousOperation('Invalid JSON')
 
     args = {}
     args['log'] = Log.objects.get(_id = id)
 
     return TemplateResponse(request, "listing/log_details.html", args)
 
-def exceptions(request):
+def exceptionCategories(request):
     args = {}
     args['component'] = "exceptions"
     args['top_exceptions'] = getTopExceptionsGraph(request)
     args['timeline'] = getExceptionTimelineGraph(request)
+    args['fields'] = QUERY_FIELDS
 
     if request.htmx:
         return TemplateResponse(request, "exceptions/exceptions.html", args)
     return TemplateResponse(request, "homepage.html", args)
 
 def topExceptions(request):
-
-    return
+    args = {}
+    args['top_exceptions'] = getTopExceptionsGraph(request)
+    args['fields'] = QUERY_FIELDS
+    return TemplateResponse(request, "exceptions/top_exceptions.html", args)
 
 def timeline(request):
-
-    return
-
-
-
+    args = {}
+    args['timeline'] = getExceptionTimelineGraph(request)
+    return TemplateResponse(request, "exceptions/timeline.html", args)
 
 # Helpers
 def getTopExceptionsGraph(request):
+    field = request.GET.get('field', "severity")
+    if not QUERY_FIELDS.__contains__(field):
+        raise SuspiciousOperation('Invalid Field')
 
-    return
-
-def getExceptionTimelineGraph(request):
-    # TODO: will also need to where statement for newest and type, order, and update unit/binSize accordingly
     pipeline = [
         {
+            "$match": {
+                "type": "E",
+            }
+        },
+        {
             "$group": {
-                "_id": {
-                    "$dateTrunc": {
-                        "date": "$timestamp", "unit": "day", "binSize": 1,
-                    }
-                },
+                "_id": f"${field}",
                 "count": {"$sum": 1}
             }
-        }
+        },
+        {
+            "$limit": 5
+        },
+        {
+            "$sort": {"count": -1}
+        },
     ]
-    dates = aggregate(pipeline)
+
+    exceptionCategories = list(aggregate(pipeline))
 
     dataSource = OrderedDict()
     chartConfig = OrderedDict()
-    chartConfig["caption"] = "Countries With Most Oil Reserves [2017-18]"
-    chartConfig["subCaption"] = "In MMbbl = One Million barrels"
-    chartConfig["xAxisName"] = "Country"
-    chartConfig["yAxisName"] = "Reserves (MMbbl)"
+    chartConfig["caption"] = "Top Errors"
+    chartConfig["subCaption"] = f"by {field}"
+    chartConfig["xAxisName"] = f"{field}"
+    chartConfig["yAxisName"] = "Errors"
     chartConfig["theme"] = "fusion"
 
     dataSource["chart"] = chartConfig
 
     dataSource['data'] = []
-    for date in dates:
+    for exceptionCategory in exceptionCategories:
         dataSource['data'].append(
             {
-                "label": date['_id'].strftime("%m/%d/%Y, %H:%M:%S"), 
-                "value": date['count']
+                "label": exceptionCategory['_id'], 
+                "value": exceptionCategory['count']
             }
         )
 
-    return FusionCharts("column2d", "myFirstChart", "600", "400", "myFirstchart-container", "json", dataSource).render()
+    return FusionCharts("bar2d", f"top-exceptions-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "top-exceptions-wrapper", "json", dataSource).render()
+
+def getExceptionTimelineGraph(request):
+    increment = request.GET.get('increment', "hourly")
+
+    display = {
+        "daily": {
+            "start": (datetime.today() - timedelta(days=59)).replace(hour=0, minute=0, second=0, microsecond=0),
+            "datetrunc": {
+                        "date": "$timestamp", "unit": "day", "binSize": 1,
+            }
+        },
+        "hourly": {
+            "start": (datetime.now() - timedelta(hours=59)).replace(minute=0, second=0, microsecond=0),
+            "datetrunc": {
+                        "date": "$timestamp", "unit": "hour", "binSize": 1,
+            }
+        },
+        "5-minute": {
+            "start": (datetime.now() - timedelta(minutes=59*5)).replace(minute=(datetime.now().minute//5 * 5), second=0, microsecond=0),
+            "datetrunc": {
+                        "date": "$timestamp", "unit": "minute", "binSize": 5,
+            }
+        }
+    }
+
+    pipeline = [
+        {
+            "$match": {
+                "type": "E",
+                "timestamp": {"$gt": display[increment]["start"] }
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "$dateTrunc": display[increment]["datetrunc"]
+                },
+                "count": {"$sum": 1}
+            }
+        },
+        {
+            "$sort": {"_id": 1}
+        }
+    ]
+
+    timestamps = list(aggregate(pipeline))
+    timestamp_range = getTimestampArray(display[increment]["start"], increment, 59)
+    timeline = [{**u, **v} for u, v in sortedZipLongest(timestamp_range, timestamps, key="_id", fillvalue={})]
+
+    dataSource = OrderedDict()
+    chartConfig = OrderedDict()
+    chartConfig["caption"] = "Errors over time"
+    chartConfig["subCaption"] = f"{increment} Increments"
+    chartConfig["xAxisName"] = "Time"
+    chartConfig["yAxisName"] = "Errors"
+    chartConfig["theme"] = "fusion"
+    chartConfig["labelStep"] = "1"
+    chartConfig["labelFontSize"] = "10"
+    chartConfig["slantLabel"] = "1"
+
+    dataSource["chart"] = chartConfig
+
+    dataSource['data'] = []
+    for timestamp in timeline:
+        dataSource['data'].append(
+            {
+                "label": timestamp['_id'].strftime("%m/%d/%Y, %H:%M:%S") if \
+                    timestamp['_id'].hour == 0 and timestamp['_id'].minute == 0 and\
+                    timestamp['_id'].second == 0 else timestamp['_id'].strftime("%H:%M:%S"), 
+                "value": timestamp['count']
+            }
+        )
+
+    return FusionCharts("column2d", f"exceptions-timeline-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "exceptions-timeline-wrapper", "json", dataSource).render()
+
+def getTimestampArray(start, increment, additional):
+    array = [{"_id": start, "count": "0"}]
+    if increment == "daily":
+        for next in range(1, additional+1):
+            array.append({"_id": array[next-1]["_id"] + timedelta(days=1), "count": "0"})
+    elif increment == "hourly":
+        for next in range(1, additional+1):
+            array.append({"_id": array[next-1]["_id"] + timedelta(hours=1), "count": "0"})
+    elif increment == "5-minute":
+        for next in range(1, additional+1):
+            array.append({"_id": array[next-1]["_id"] + timedelta(minutes=5), "count": "0"})
+    return array
+
+def sortedZipLongest(l1, l2, key, fillvalue={}):  
+    l1 = iter(sorted(l1, key=lambda x: x[key]))
+    l2 = iter(sorted(l2, key=lambda x: x[key]))
+    u = next(l1, None)
+    v = next(l2, None)
+
+    while (u is not None) or (v is not None):  
+        if u is None:
+            yield fillvalue, v
+            v = next(l2, None)
+        elif v is None:
+            yield u, fillvalue
+            u = next(l1, None)
+        elif u.get(key) == v.get(key):
+            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} == {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
+            yield u, v
+            u = next(l1, None)
+            v = next(l2, None)
+        elif u.get(key) < v.get(key):
+            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} < {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
+            yield u, fillvalue
+            u = next(l1, None)
+        else:
+            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} > {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
+            yield fillvalue, v
+            v = next(l2, None)

@@ -1,0 +1,23 @@
+<div class=exceptions-timeline id=exceptions-timeline>
+    <div id="exceptions-timeline-wrapper">{{ timeline|safe }}</div>
+    <div>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="timeline?increment=5-minute"
+            hx-target="#exceptions-timeline"
+        >5 minute increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="timeline?increment=hourly"
+            hx-target="#exceptions-timeline"
+        >Hourly increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="timeline?increment=daily"
+            hx-target="#exceptions-timeline"
+        >Daily increment</button>
+    </div>
+</div>

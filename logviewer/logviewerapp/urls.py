@@ -15,5 +15,7 @@ urlpatterns = [
     path('log-viewer/', RedirectView.as_view(url='/listing', permanent=True)),
     path('log-viewer/listing/', views.listing),
     path('log-viewer/listing/<str:id>', views.details),
-    path('log-viewer/exceptions/', views.exceptions),
+    path('log-viewer/exceptions/', views.exceptionCategories),
+    path('log-viewer/exceptions/timeline', views.timeline),
+    path('log-viewer/exceptions/top-exceptions', views.topExceptions),
 ]
