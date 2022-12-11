@@ -17,19 +17,8 @@
             <li>
                 <a hx-get="/log-viewer/exceptions" hx-target="#content-wrapper" hx-push-url="true">Exceptions</a>
             </li>
-            <li class="active">
-                <a href="#homeSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">Home</a>
-                <ul class="collapse list-unstyled" id="homeSubmenu">
-                    <li>
-                        <a href="#">Home 1</a>
-                    </li>
-                    <li>
-                        <a href="#">Home 2</a>
-                    </li>
-                    <li>
-                        <a href="#">Home 3</a>
-                    </li>
-                </ul>
+            <li>
+                <a hx-get="/log-viewer/users" hx-target="#content-wrapper" hx-push-url="true">User Info</a>
             </li>
         </ul>
     </nav>

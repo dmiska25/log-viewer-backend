@@ -1,0 +1,23 @@
+<div class=user-sessions-timeline id=user-sessions-timeline>
+    <div id="user-sessions-timeline-wrapper">{{ user_sessions|safe }}</div>
+    <div>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="session-duration?increment=5-minute"
+            hx-target="#user-sessions-timeline"
+        >5 minute increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="session-duration?increment=hourly"
+            hx-target="#user-sessions-timeline"
+        >Hourly increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="session-duration?increment=daily"
+            hx-target="#user-sessions-timeline"
+        >Daily increment</button>
+    </div>
+</div>

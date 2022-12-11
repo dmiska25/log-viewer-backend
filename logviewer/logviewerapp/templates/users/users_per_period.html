@@ -1,0 +1,23 @@
+<div class=users-timeline id=users-timeline>
+    <div id="users-timeline-wrapper">{{ users|safe }}</div>
+    <div>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="users?increment=5-minute"
+            hx-target="#users-timeline"
+        >5 minute increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="users?increment=hourly"
+            hx-target="#users-timeline"
+        >Hourly increment</button>
+        <button 
+            type="button" 
+            class="btn btn-primary"
+            hx-get="users?increment=daily"
+            hx-target="#users-timeline"
+        >Daily increment</button>
+    </div>
+</div>

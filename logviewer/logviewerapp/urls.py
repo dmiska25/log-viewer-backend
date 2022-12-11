@@ -18,4 +18,7 @@ urlpatterns = [
     path('log-viewer/exceptions/', views.exceptionCategories),
     path('log-viewer/exceptions/timeline', views.timeline),
     path('log-viewer/exceptions/top-exceptions', views.topExceptions),
+    path('log-viewer/users/', views.userInformation),
+    path('log-viewer/users/session-duration', views.userDuration),
+    path('log-viewer/users/users', views.users)
 ]

@@ -1,11 +1,7 @@
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from itertools import zip_longest
-import pprint
 
 from django.core.paginator import Paginator
-from django.db.models import Count
-from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render
 from django.template.response import TemplateResponse
 from rest_framework import permissions, status, viewsets
@@ -14,7 +10,6 @@ from django.core.exceptions import SuspiciousOperation
 
 from .rawQuery import aggregate
 
-from . import urls
 from .fusioncharts import FusionCharts
 from .models import Log
 from .serializers import LogSerializer
@@ -95,7 +90,27 @@ def timeline(request):
     args['timeline'] = getExceptionTimelineGraph(request)
     return TemplateResponse(request, "exceptions/timeline.html", args)
 
-# Helpers
+def userInformation(request):
+    args = {}
+    args['component'] = "users"
+    args['user_sessions'] = getUserActivityGraph(request)
+    args['users'] = getUsersGraph(request)
+
+    if request.htmx:
+        return TemplateResponse(request, "users/users.html", args)
+    return TemplateResponse(request, "homepage.html", args)
+
+def userDuration(request):
+    args = {}
+    args['user_sessions'] = getUserActivityGraph(request)
+    return  TemplateResponse(request, "users/user_sessions.html", args)
+
+def users(request):
+    args = {}
+    args['users'] = getUsersGraph(request)
+    return  TemplateResponse(request, "users/users_per_period.html", args)
+
+# Graph Queries ===============================================================
 def getTopExceptionsGraph(request):
     field = request.GET.get('field', "severity")
     if not QUERY_FIELDS.__contains__(field):
@@ -144,29 +159,30 @@ def getTopExceptionsGraph(request):
 
     return FusionCharts("bar2d", f"top-exceptions-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "top-exceptions-wrapper", "json", dataSource).render()
 
-def getExceptionTimelineGraph(request):
-    increment = request.GET.get('increment', "hourly")
 
-    display = {
-        "daily": {
-            "start": (datetime.today() - timedelta(days=59)).replace(hour=0, minute=0, second=0, microsecond=0),
-            "datetrunc": {
-                        "date": "$timestamp", "unit": "day", "binSize": 1,
-            }
-        },
-        "hourly": {
-            "start": (datetime.now() - timedelta(hours=59)).replace(minute=0, second=0, microsecond=0),
-            "datetrunc": {
-                        "date": "$timestamp", "unit": "hour", "binSize": 1,
-            }
-        },
-        "5-minute": {
-            "start": (datetime.now() - timedelta(minutes=59*5)).replace(minute=(datetime.now().minute//5 * 5), second=0, microsecond=0),
-            "datetrunc": {
-                        "date": "$timestamp", "unit": "minute", "binSize": 5,
-            }
+display = {
+    "daily": {
+        "start": (datetime.today() - timedelta(days=59)).replace(hour=0, minute=0, second=0, microsecond=0),
+        "datetrunc": {
+                    "date": "$timestamp", "unit": "day", "binSize": 1,
+        }
+    },
+    "hourly": {
+        "start": (datetime.now() - timedelta(hours=59)).replace(minute=0, second=0, microsecond=0),
+        "datetrunc": {
+                    "date": "$timestamp", "unit": "hour", "binSize": 1,
+        }
+    },
+    "5-minute": {
+        "start": (datetime.now() - timedelta(minutes=59*5)).replace(minute=(datetime.now().minute//5 * 5), second=0, microsecond=0),
+        "datetrunc": {
+                    "date": "$timestamp", "unit": "minute", "binSize": 5,
         }
     }
+}
+
+def getExceptionTimelineGraph(request):
+    increment = request.GET.get('increment', "hourly")
 
     pipeline = [
         {
@@ -218,6 +234,133 @@ def getExceptionTimelineGraph(request):
 
     return FusionCharts("column2d", f"exceptions-timeline-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "exceptions-timeline-wrapper", "json", dataSource).render()
 
+def getUserActivityGraph(request):
+    increment = request.GET.get('increment', "hourly")
+
+    pipeline = [
+        {
+            "$match": {
+                "type": "I",
+                "service_name": "user device",
+                "details.notice": {"$in": ["logon", "logoff"]},
+                "timestamp": {"$gt": display[increment]["start"] },
+            }
+        },
+        {
+            "$group": {
+                "_id": "$details.session_id",
+                "timestamp": { "$min": "$timestamp" },
+                "session_end": { "$max": "$timestamp" },
+            },
+        },
+        {
+            "$group": {
+                "_id": {
+                    "$dateTrunc": display[increment]["datetrunc"]
+                },
+                "count": {"$avg": {"$divide": [{"$subtract": ["$session_end", "$timestamp"]}, 60000]}}
+            }
+        },
+        {
+            "$sort": {"_id": 1}
+        }
+    ]
+
+    timestamps = list(aggregate(pipeline))
+    timestamp_range = getTimestampArray(display[increment]["start"], increment, 59)
+    timeline = [{**u, **v} for u, v in sortedZipLongest(timestamp_range, timestamps, key="_id", fillvalue={})]
+
+    dataSource = OrderedDict()
+    chartConfig = OrderedDict()
+    chartConfig["caption"] = "Average User Session Time"
+    chartConfig["subCaption"] = f"{increment} Increments"
+    chartConfig["xAxisName"] = "Time"
+    chartConfig["yAxisName"] = "Duration (minutes)"
+    chartConfig["theme"] = "fusion"
+    chartConfig["labelStep"] = "1"
+    chartConfig["labelFontSize"] = "10"
+    chartConfig["slantLabel"] = "1"
+
+    dataSource["chart"] = chartConfig
+
+    dataSource['data'] = []
+    for timestamp in timeline:
+        dataSource['data'].append(
+            {
+                "label": timestamp['_id'].strftime("%m/%d/%Y, %H:%M:%S") if \
+                    timestamp['_id'].hour == 0 and timestamp['_id'].minute == 0 and\
+                    timestamp['_id'].second == 0 else timestamp['_id'].strftime("%H:%M:%S"), 
+                "value": timestamp['count']
+            }
+        )
+
+    return FusionCharts("column2d", f"user-sessions-timeline-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "user-sessions-timeline-wrapper", "json", dataSource).render()
+
+
+def getUsersGraph(request):
+    increment = request.GET.get('increment', "hourly")
+
+    pipeline = [
+        {
+            "$match": {
+                "type": "I",
+                "service_name": "user device",
+                "details.notice": "logon",
+                "timestamp": {"$gt": display[increment]["start"] },
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    "$dateTrunc": display[increment]["datetrunc"]
+                },
+                "users": {"$addToSet": "$details.user_id"}
+            }
+        },
+        {
+            "$project": {
+                "_id": "$_id",
+                "count": { "$size": "$users" }
+            }
+        },
+        {
+            "$sort": {"_id": 1}
+        }
+    ]
+
+    timestamps = list(aggregate(pipeline))
+    timestamp_range = getTimestampArray(display[increment]["start"], increment, 59)
+    timeline = [{**u, **v} for u, v in sortedZipLongest(timestamp_range, timestamps, key="_id", fillvalue={})]
+
+    dataSource = OrderedDict()
+    chartConfig = OrderedDict()
+    chartConfig["caption"] = "Users Per Period"
+    chartConfig["subCaption"] = f"{increment} Increments"
+    chartConfig["xAxisName"] = "Time"
+    chartConfig["yAxisName"] = "Users"
+    chartConfig["theme"] = "fusion"
+    chartConfig["labelStep"] = "1"
+    chartConfig["labelFontSize"] = "10"
+    chartConfig["slantLabel"] = "1"
+
+    dataSource["chart"] = chartConfig
+
+    dataSource['data'] = []
+    for timestamp in timeline:
+        dataSource['data'].append(
+            {
+                "label": timestamp['_id'].strftime("%m/%d/%Y, %H:%M:%S") if \
+                    timestamp['_id'].hour == 0 and timestamp['_id'].minute == 0 and\
+                    timestamp['_id'].second == 0 else timestamp['_id'].strftime("%H:%M:%S"), 
+                "value": timestamp['count']
+            }
+        )
+
+    return FusionCharts("column2d", f"users-timeline-{datetime.now().strftime('%H/%M/%S')}", "1000", "400", "users-timeline-wrapper", "json", dataSource).render()
+
+
+# Helper functions ===============================================================
+
 def getTimestampArray(start, increment, additional):
     array = [{"_id": start, "count": "0"}]
     if increment == "daily":
@@ -245,15 +388,12 @@ def sortedZipLongest(l1, l2, key, fillvalue={}):
             yield u, fillvalue
             u = next(l1, None)
         elif u.get(key) == v.get(key):
-            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} == {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
             yield u, v
             u = next(l1, None)
             v = next(l2, None)
         elif u.get(key) < v.get(key):
-            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} < {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
             yield u, fillvalue
             u = next(l1, None)
         else:
-            #print(f"{u.get(key).strftime('%m/%d/%Y, %H:%M:%S')} > {v.get(key).strftime('%m/%d/%Y, %H:%M:%S')}")
             yield fillvalue, v
             v = next(l2, None)

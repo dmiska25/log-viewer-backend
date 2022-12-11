@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import json
 import random
 from faker import Faker
@@ -28,6 +29,15 @@ type = [
     'R'
 ]
 
+notices = [
+    'logon',
+    'logoff',
+]
+
+user_ids = []
+# seed the users
+for i in range(600):
+    user_ids.append(fake.isbn13())
 
 
 # define classes
@@ -76,12 +86,62 @@ class ErrorLog(BaseLog):
     def generate():
         return ErrorLog(**ErrorLog.getDefaultArgs())
         
+class UserLog(BaseLog):
+    last_given_time = datetime.now()
+    last_given_notice = 'logoff'
+    last_given_session_id = None
+    last_given_user_id = None
+  
+    def getNotice():
+        if UserLog.last_given_notice == 'logon':
+            UserLog.last_given_notice = 'logoff'
+            return UserLog.last_given_notice
+        UserLog.last_given_notice = 'logon'
+        return UserLog.last_given_notice
 
+    def getTime():
+        if UserLog.last_given_notice == 'logon':
+            return fake.date_time_between_dates(UserLog.last_given_time, UserLog.last_given_time + timedelta(hours=5)).isoformat(sep='T', timespec='auto')
+        UserLog.last_given_time = fake.past_datetime()
+        return UserLog.last_given_time.isoformat(sep='T', timespec='auto')
+
+    def getSessionId():
+        if UserLog.last_given_notice == 'logon':
+            return UserLog.last_given_session_id
+        UserLog.last_given_session_id = fake.isbn13()
+        return UserLog.last_given_session_id
+
+    def getUserId():
+        if UserLog.last_given_notice == 'logon':
+            return UserLog.last_given_user_id
+        UserLog.last_given_user_id = random.choice(user_ids)
+        return UserLog.last_given_user_id
+
+    def __init__(self, details, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.details = details
+
+    def getDefaultArgs():
+        default_args = {**BaseLog.getDefaultArgs()}
+        default_args.update({
+            'type': 'I',
+            'severity': 'L', 
+            'service_name': 'user device',
+            'timestamp': UserLog.getTime(), 
+            "details": {
+                "session_id": UserLog.getSessionId(), 
+                "user_id": UserLog.getUserId(),
+                "notice": UserLog.getNotice(),
+            },
+        })
+        return default_args
+
+    def generate():
+        return UserLog(**UserLog.getDefaultArgs())
 
 # define generation and quantities
 generation = {
-    BaseLog: 1000,
-    ErrorLog: 600
+    UserLog: 1000,
 }
 
 
