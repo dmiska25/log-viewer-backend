@@ -3,11 +3,16 @@ import json
 import random
 from faker import Faker
 from faker.providers import date_time
-import requests 
+import requests
+import pytz  # Import pytz for timezone handling
+
 fake = Faker()
 fake.add_provider(date_time)
 
- # dictionaries
+# Define timezone (e.g., UTC)
+timezone = pytz.UTC
+
+# dictionaries
 service_names = [
     "Pod1",
     "Pod2",
@@ -39,13 +44,12 @@ user_ids = []
 for i in range(600):
     user_ids.append(fake.isbn13())
 
-
 # define classes
 
 class BaseLog:
     def __init__(self, service_name, timestamp, severity, type, title, description) -> None:
         self.service_name = service_name
-        self.timestamp = timestamp
+        self.timestamp = timestamp  # Remove isoformat() here
         self.severity = severity
         self.type = type
         self.title = title
@@ -59,11 +63,11 @@ class BaseLog:
 
     def getDefaultArgs():
         return {
-            'service_name': random.choice(service_names), 
-            'timestamp': fake.past_datetime().isoformat(sep='T', timespec='auto'), 
-            'severity': random.choice(severity), 
-            'type': random.choice(type), 
-            'title': fake.text(50), 
+            'service_name': random.choice(service_names),
+            'timestamp': timezone.localize(fake.past_datetime()).isoformat(),  # Make timestamp timezone-aware and convert to ISO format
+            'severity': random.choice(severity),
+            'type': random.choice(type),
+            'title': fake.text(50),
             'description': fake.text(),
         }
 
@@ -85,13 +89,13 @@ class ErrorLog(BaseLog):
 
     def generate():
         return ErrorLog(**ErrorLog.getDefaultArgs())
-        
+
 class UserLog(BaseLog):
-    last_given_time = datetime.now()
+    last_given_time = datetime.now(timezone)  # Initialize as a datetime object
     last_given_notice = 'logoff'
     last_given_session_id = None
     last_given_user_id = None
-  
+
     def getNotice():
         if UserLog.last_given_notice == 'logon':
             UserLog.last_given_notice = 'logoff'
@@ -101,9 +105,9 @@ class UserLog(BaseLog):
 
     def getTime():
         if UserLog.last_given_notice == 'logon':
-            return fake.date_time_between_dates(UserLog.last_given_time, UserLog.last_given_time + timedelta(hours=5)).isoformat(sep='T', timespec='auto')
-        UserLog.last_given_time = fake.past_datetime()
-        return UserLog.last_given_time.isoformat(sep='T', timespec='auto')
+            return timezone.localize(fake.date_time_between_dates(UserLog.last_given_time, UserLog.last_given_time + timedelta(hours=5))).isoformat()
+        UserLog.last_given_time = timezone.localize(fake.past_datetime())
+        return UserLog.last_given_time.isoformat()
 
     def getSessionId():
         if UserLog.last_given_notice == 'logon':
@@ -125,11 +129,11 @@ class UserLog(BaseLog):
         default_args = {**BaseLog.getDefaultArgs()}
         default_args.update({
             'type': 'I',
-            'severity': 'L', 
+            'severity': 'L',
             'service_name': 'user device',
-            'timestamp': UserLog.getTime(), 
+            'timestamp': UserLog.getTime(),
             "details": {
-                "session_id": UserLog.getSessionId(), 
+                "session_id": UserLog.getSessionId(),
                 "user_id": UserLog.getUserId(),
                 "notice": UserLog.getNotice(),
             },
@@ -141,9 +145,8 @@ class UserLog(BaseLog):
 
 # define generation and quantities
 generation = {
-    UserLog: 1000,
+    ErrorLog: 1000,
 }
-
 
 # run generation and serialize
 logs = []

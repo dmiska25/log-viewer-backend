@@ -1,8 +1,11 @@
 
+import os
 from pymongo import MongoClient
 
 def aggregate(pipeline):
-    client = MongoClient()
+    client = MongoClient(
+        host=os.getenv('MONGO_HOST')
+    )
     db = client['log-storage']
     logs = db['logviewerapp_log']
 
