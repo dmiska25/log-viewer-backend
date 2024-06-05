@@ -78,7 +78,6 @@ WSGI_APPLICATION = 'logviewer.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
-print('MONGO_HOST='+os.getenv('MONGO_HOST'))
 DATABASES = {
     'default': {
         'ENGINE': 'djongo',
